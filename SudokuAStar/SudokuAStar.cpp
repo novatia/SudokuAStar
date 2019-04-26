@@ -4,6 +4,7 @@
 #include "pch.h"
 #include <iostream>
 #include <vector>
+#include <map>
 
 using namespace std;
 
@@ -38,10 +39,11 @@ public:
 		int len = 0;
 
 		for (int i = 0; i < SIZE*SIZE; i++)
-			if (values[i] != 0) {
-				len++;
+			if (value == 0) {
+				if (values[i] != 0) {
+					len++;
+				}
 			}
-			
 		return len;
 	}
 
@@ -49,8 +51,10 @@ public:
 		int len = 0;
 
 		for (int i = 0; i < SIZE*SIZE; i++)
-			if (values[i] != 0) {
-				len++;
+			if (value == 0) {
+				if (values[i] != 0) {
+					len++;
+				}
 			}
 			else break;
 		return len;
@@ -62,7 +66,8 @@ unsigned long product(CellState *game) {
 
 	for (int i = 0; i < SIZE*SIZE; i++) {
 		for (int j = 0; j < SIZE*SIZE; j++) {
-			CellState state =  *(game+ i* SIZE+ j);
+			CellState state =  *(game+ i* SIZE*SIZE + j);
+			if (state.value!=0)
 			C *= state.value;
 		}
 	}
@@ -75,7 +80,7 @@ unsigned long sum(CellState *game) {
 
 	for (int i = 0; i < SIZE*SIZE; i++) {
 		for (int j = 0; j < SIZE*SIZE; j++) {
-			CellState state = *(game + i * SIZE + j);
+			CellState state = *(game + i * SIZE*SIZE + j);
 			C += state.Count();
 		}
 	}
@@ -91,46 +96,64 @@ CellState* preprocess(CellState* current_state) {
 	//oid* memcpy( void* dest, const void* src, std::size_t count );
 	memcpy(new_state, current_state, sizeof(CellState)*(SIZE*SIZE)*(SIZE*SIZE));
 
-	for (int i = 0; i < SIZE*SIZE; i++) {
-		for (int j = 0; j < SIZE*SIZE; j++) {
-			CellState *state = (new_state + i * SIZE*SIZE + j);
+	for (int row = 0; row < SIZE*SIZE; row++) {
+		for (int col = 0; col < SIZE*SIZE; col++) {
+
+			CellState *state = (new_state + row *SIZE*SIZE + col);
+
 			if (state->value == 0) {
-			
+				cout << "\n" << "PREPROCESS " << row << "," << col << "="<< state->value;
+
+				cout << "\nH={ ";
 				//valutare quali elementi rimuovere dalla RIGA I-ESIMA
 				for (int k = 0; k < SIZE*SIZE; k++) {
-					CellState cellState = *(new_state + k * SIZE*SIZE + j);
-					if (k != j && cellState.value != 0) {
+					CellState cellState = *(new_state + k * SIZE*SIZE + row);
+					
+					if ( cellState.value != 0 ) {
+						cout << cellState.value;
 						state->removeValue(cellState.value);
 					}
 				}
+				cout << "}";
 
+				cout << "\nV={";
 				//valutare quali elementi rimuovere dalla COLONNA I-ESIMA
 				for (int k = 0; k < SIZE*SIZE; k++) {
-					CellState cellState = *(new_state + i * SIZE*SIZE + k);
-					if (k != i && cellState.value != 0) {
+					CellState cellState = *(new_state + col * SIZE*SIZE + k);
+					if ( cellState.value != 0) {
+						cout << cellState.value;
 						state->removeValue(cellState.value);
 					}
 				}
+				cout << "}";
 
 				////valutare quali elementi rimuovere dal  Quadrante i-esimo
-				int q_i = i / SIZE;
-				int q_j = j / SIZE;
+				int q_row = row / SIZE;
+				int q_col = col / SIZE;
 
-				int q_offset_x = q_i * SIZE;
-				int q_offset_y = q_j * SIZE;
+				int q_offset = q_row * SIZE * SIZE * SIZE+ q_col* SIZE;
+				
 
+				cout << "\nQ(" << q_row << ","<<q_col <<")";
 
-				for (int x = 0; x < SIZE; x++) {
-					for (int y = 0; y < SIZE; y++) {
-						CellState cellState = *(new_state + (q_offset_x + x) + (q_offset_y + y));
+				CellState cellState;
+				cout << "\nQ={";
+				for (int y = 0; y < SIZE; y++) {
+					for (int x = 0; x < SIZE; x++) {
+						
+						cellState = *(new_state + q_offset +  y * SIZE*SIZE  + x);
+						
+						if (&cellState == state)
+							continue;
+
 						if (cellState.value != 0) {
+							cout << cellState.value;
+
 							state->removeValue(cellState.value);
 						}
 					}
 				}
-
-
-
+				cout << "}";
 			}
 		}
 	}
@@ -181,6 +204,100 @@ void printValues(CellState* current_state) {
 		}
 	}
 }
+
+
+vector<CellState*> *GetChildStates(CellState* current_state) {
+	unsigned long min_values_count= SIZE * SIZE;
+
+	vector<CellState *> *child_states = new vector<CellState *>();
+
+	//foreach cell check mins CountValues
+	for (int j = 0; j < SIZE*SIZE; j++) {
+		for (int i = 0; i < SIZE*SIZE; i++) {
+			CellState state = *(current_state + i * SIZE*SIZE + j);
+			if (state.value==0)
+				if (state.CountValues() < min_values_count)
+					min_values_count = state.CountValues();
+		}
+	}
+
+	for (int j = 0; j < SIZE*SIZE; j++) {
+		for (int i = 0; i < SIZE*SIZE; i++) {
+			CellState state = *(current_state + i * SIZE*SIZE + j);
+
+			if (state.CountValues() == min_values_count) {
+				for (int k = 0; k < SIZE*SIZE; k++) {
+					int p_value = state.values[k];
+
+					if (p_value == 0)
+						continue;
+
+					CellState *new_state = (CellState*)malloc(sizeof(CellState)*(SIZE*SIZE)*(SIZE*SIZE));
+
+					//oid* memcpy( void* dest, const void* src, std::size_t count );
+					memcpy(new_state, current_state, sizeof(CellState)*(SIZE*SIZE)*(SIZE*SIZE));
+
+					CellState *p_state = (new_state + i * SIZE*SIZE + j);
+					memset(&p_state->values,0, sizeof(p_state->values) * sizeof(int));
+					p_state->value = p_value;
+
+					CellState *child_state = preprocess((CellState *)new_state);
+
+					child_states->push_back(child_state);
+				}
+			}
+		}
+	}
+
+	return child_states;
+}
+
+map<unsigned long, CellState*> state_queue;
+
+void Solver(CellState* current_state) {
+	unsigned long G = sum((CellState *)current_state);
+
+	cout << "\nSUM : " << G;
+
+	state_queue[G] = current_state;
+
+	vector<CellState*>*child_state = GetChildStates(current_state);
+
+	unsigned long G_min = G;
+
+	//calculate G for every next node
+	CellState* next_state = current_state;
+
+	for (vector<CellState*>::iterator it = child_state->begin(); it != child_state->end(); ++it) {
+		cout << "\n * * * * * * * * * CHILD";
+		unsigned long G = sum(*it);
+		cout << "\nG:" << G;
+		printSudoku(*it);
+		printValues(*it);
+
+		if (G_min > G) {
+			G_min = G;
+			//current next state
+			next_state = *it;
+		}
+	}
+
+	//if G=0 return
+	//SOLVED
+	if (G_min == 0)
+		return;
+	else {
+		//call solver with the lowes one.
+		if ( next_state == current_state)
+			return;
+
+		Solver(next_state);
+	}
+
+	//else
+	//if solution is not possible, get the priority queue and try to expand the next value
+}
+
 
 int main()
 {
@@ -242,18 +359,12 @@ int main()
 
 	std::cout << "Sudoku is ready.";
 
-
-	
-	printSudoku((CellState *)c0);
-	printValues((CellState *)c0);
-
-
 	CellState *c1 = preprocess((CellState *)c0);
 	
-	printSudoku((CellState *)c1);
-	printValues((CellState *)c1);
+	printSudoku(c1);
+	printValues(c1);
 
-
+	Solver(c1);
 }
 
 
