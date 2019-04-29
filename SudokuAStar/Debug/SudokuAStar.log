@@ -1,2 +1,4 @@
 ﻿  SudokuAStar.cpp
-  SudokuAStar.vcxproj -> D:\RepositoryGIT\SudokuAStar\Debug\SudokuAStar.exe
+d:\repo\sudokuastar\sudokuastar\sudokuastar.cpp(251): warning C4244: '=': conversion from 'unsigned __int64' to 'unsigned long', possible loss of data
+d:\repo\sudokuastar\sudokuastar\sudokuastar.cpp(316): warning C4244: 'argument': conversion from 'unsigned __int64' to 'const unsigned long', possible loss of data
+  SudokuAStar.vcxproj -> D:\REPO\SudokuAStar\Debug\SudokuAStar.exe
